@@ -13,6 +13,33 @@ from torch import optim
 import model 
 import IQAdataset as Dataset
 
+from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
+from ignite.metrics.metric import Metric
+
+class IQAPerformance(Metric):
+    
+    def  __init__(self):
+        self.y_pred = []
+        self.y = []
+
+    def update(self,output):
+        pred , y = output
+
+        self.y.append(y[0])
+        self.y_pred.append(torch.mean(pred[0]))
+    
+    def conpute(self):
+        y = np.reshape(np.asarray(self.y),(-1,))
+        pred = np.reshape(np.asarray(self.y_pred)(-1,))
+
+        srocc = stats.spearmanr(y,pred)[0]
+        krocc = stats.stats.kendalltau(y,pred)[0]
+        plcc = stats.pearsonr(y,pred)[0]
+        rmse = np.sqrt(((y - pred) ** 2).mean())
+
+        return srocc,krocc,plcc,rmse
+
+
 str_cd = 'exp/BiNet/' + datetime.now().strftime("%Y%m%d_%H%M%S")
 if os.path.exists(str_cd) == False:
     os.makedirs(str_cd)
