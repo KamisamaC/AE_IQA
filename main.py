@@ -117,7 +117,6 @@ def run(args,config,log_dir):
             best_criterion = SROCC
             best_epoch = engine.state.epoch
             torch.save(model.state_dict(), model_file)
-
     trainer.run(train_loader, max_epochs=epochs)
 
     writer.close()
