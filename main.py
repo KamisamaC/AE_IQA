@@ -43,6 +43,90 @@ def run(args,config,log_dir):
 
     optimizer = optim.Adam(model.parameters(),lr = args.lr, weight_decay = args.weight_decay)
 
+        global best_criterion   
+    best_criterion = -1  # SROCC>=-1
+    trainer = create_supervised_trainer(model, optimizer, loss_fn, device=device)
+    evaluator = create_supervised_evaluator(model,
+                                            metrics={'IQA_performance': IQAPerformance()},
+                                            device=device)
+
+##################################################################
+#Save the best result in validation dataset 
+#Write information into TensorboardX
+##################################################################
+    @trainer.on(Events.ITERATION_COMPLETED)
+    def log_training_loss(engine):
+        writer.add_scalar("training/loss", engine.state.output, engine.state.iteration)
+        iter = engine.state.iteration % len(train_loader)
+        if iter == len(train_loader)-1:
+            print("Epoch[{}] Iteration[{}/{}] Loss: {:.2f}"
+                  "".format(engine.state.epoch, iter, len(train_loader), engine.state.output), flush=True)
+
+    @trainer.on(Events.EPOCH_COMPLETED)
+    def change_lr(engine):
+        for p in optimizer.param_groups:        
+            print('lr: ', str(p['lr']))
+        if engine.state.epoch % 25== 0:
+            for p in optimizer.param_groups:
+                p['lr'] *= 0.8
+
+    @trainer.on(Events.EPOCH_COMPLETED)
+    def log_validation_results(engine):
+        evaluator.run(val_loader)
+        metrics = evaluator.state.metrics
+        SROCC, KROCC, PLCC, RMSE, MAE, OR = metrics['IQA_performance']
+        print("Validation Results - Epoch: {}  SROCC: {:.4f} KROCC: {:.4f} PLCC: {:.4f} RMSE: {:.4f} MAE: {:.4f} OR: {:.2f}%"
+              .format(engine.state.epoch, SROCC, KROCC, PLCC, RMSE, MAE, 100 * OR))
+        writer.add_scalar("validation/SROCC", SROCC, engine.state.epoch)
+        writer.add_scalar("validation/KROCC", KROCC, engine.state.epoch)
+        writer.add_scalar("validation/PLCC", PLCC, engine.state.epoch)
+        writer.add_scalar("validation/RMSE", RMSE, engine.state.epoch)
+        writer.add_scalar("validation/MAE", MAE, engine.state.epoch)
+        writer.add_scalar("validation/OR", OR, engine.state.epoch)
+        global best_criterion
+        global best_epoch
+        if SROCC > best_criterion:
+            best_criterion = SROCC
+            best_epoch = engine.state.epoch
+            torch.save(model.state_dict(), trained_model_file)
+###############################################################
+
+
+    @trainer.on(Events.EPOCH_COMPLETED)
+    def log_testing_results(engine):
+        if config["test_ratio"] > 0 and config['test_during_training']:
+            evaluator.run(test_loader)
+            metrics = evaluator.state.metrics
+            SROCC, KROCC, PLCC, RMSE, MAE, OR = metrics['IQA_performance']
+            #Acc = metrics['IDC_performance']
+            print("Testing Results    - Epoch: {} SROCC: {:.4f} KROCC: {:.4f} PLCC: {:.4f} RMSE: {:.4f} MAE: {:.4f} OR: {:.2f}%"
+                  .format(engine.state.epoch, SROCC, KROCC, PLCC, RMSE, MAE, 100 * OR))
+            writer.add_scalar("testing/SROCC", SROCC, engine.state.epoch)
+            writer.add_scalar("testing/KROCC", KROCC, engine.state.epoch)
+            writer.add_scalar("testing/PLCC", PLCC, engine.state.epoch)
+            writer.add_scalar("testing/RMSE", RMSE, engine.state.epoch)
+            writer.add_scalar("testing/MAE", MAE, engine.state.epoch)
+            writer.add_scalar("testing/OR", OR, engine.state.epoch)
+            #3writer.add_scalar("testing/Acc", Acc, engine.state.epoch)
+
+    @trainer.on(Events.COMPLETED)
+    def final_testing_results(engine):
+        if config["test_ratio"] > 0:
+            model.load_state_dict(torch.load(trained_model_file))
+            evaluator.run(test_loader)
+            metrics = evaluator.state.metrics
+            SROCC, KROCC, PLCC, RMSE, MAE, OR = metrics['IQA_performance']
+            #Acc = metrics['IDC_performance']
+            global best_epoch
+            print("Final Test Results - Epoch: {} SROCC: {:.4f} KROCC: {:.4f} PLCC: {:.4f} RMSE: {:.4f} MAE: {:.4f} OR: {:.2f}%"
+                .format(best_epoch,  SROCC, KROCC, PLCC, RMSE, MAE, 100 * OR))
+            np.save(save_result_file, ( SROCC, KROCC, PLCC, RMSE, MAE, OR))
+
+    # kick everything off
+    trainer.run(train_loader, max_epochs=epochs)
+
+    writer.close()
+
 
 if __name__ == "__main":
     parser = ArgumentParser(description = "Attention-Expaned CNNIQA")
