@@ -11,23 +11,25 @@ from tensorboardX import SummaryWriter
 from datetime import datetime
 from torch import optim
 import model 
-from IQAdataset import Dataset
+import IQAdataset as Dataset
 
 str_cd = 'exp/BiNet/' + datetime.now().strftime("%Y%m%d_%H%M%S")
 if os.path.exists(str_cd) == False:
     os.makedirs(str_cd)
 
 def get_data_loader (args,config):
-    train_dataset = Dataset.arg.dataset(config,'train')
+    dataset = args.dataset
+    Dataset = Dataset.dataset
+    train_dataset = Dataset(config,'train')
     train_loader = DataLoader(train_dataset,
                                   batch_size = args.batch_size,
                                   shuffle = True,
                                   num_workers = 4)
-    val_dataset = Dataset.args.dataset(config,'test')
+    val_dataset = Dataset(config,'test')
     val_loader = DataLoader(val_dataset)
     return train_loader,val_loader
 
-def create_summary_writer(model, data_loader, log_dir = parser.log_dir):
+def create_summary_writer(model, data_loader, log_dir = 'tensorboard_logs'):
     writer = SummaryWriter(log_dir=log_dir)
     return writer
 
@@ -36,7 +38,7 @@ def run(args,config,log_dir):
     device = torch.device("cuda" if args.use_gpu and torch.cuda.is_available() else "cpu")
     train_loader,val_loader = get_data_loader(args,config)
 
-    writer = create_summary_writer(model,train_loader,log_dir)
+    writer = create_summary_writer(model,train_loader,args.log_dir)
     model = model.to(device)
 
     optimizer = optim.Adam(model.parameters(),lr = args.lr, weight_decay = args.weight_decay)
@@ -52,7 +54,7 @@ if __name__ == "__main":
     parser.add_argument('--dataset',type=str,default='LIVE',help='dataset to train/test(default:LIVE2016)')
     parser.add_argument('--model',type=str,default='ResNet',help='Model to train/test(default:ResNet)')
     parser.add_argument('--use_gpu',type=bool,default=True,help='flag whether to use GPU acceleration')
-    parser.add_argument('--log_dir',type=str,default='./tensorboard_logs',help='log diretory for Tensorboard log output')
+    parser.add_argument('--log_dir',type=str,default=str_cd +'/tensorboard_logs',help='log diretory for Tensorboard log output')
 
 
     args = parser.parse_args()
@@ -73,6 +75,6 @@ if __name__ == "__main":
         os.makedirs(str_cd+'/results')
     
     
-    run()
+    run(args = args,config = config )
 
                                 
