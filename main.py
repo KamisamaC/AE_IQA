@@ -31,12 +31,12 @@ def create_summary_writer(model, data_loader, log_dir = parser.log_dir):
     writer = SummaryWriter(log_dir=log_dir)
     return writer
 
-def run(args,config,log_dir):
+def run(args,config):
     model = model.args.model(eature_channels=config['feature_channels'], n1_nodes=config['n1_nodes'], n2_nodes=config['n2_nodes'])
     device = torch.device("cuda" if args.use_gpu and torch.cuda.is_available() else "cpu")
     train_loader,val_loader = get_data_loader(args,config)
 
-    writer = create_summary_writer(model,train_loader,log_dir)
+    writer = create_summary_writer(model,train_loader,args.log_dir)
     model = model.to(device)
 
     optimizer = optim.Adam(model.parameters(),lr = args.lr, weight_decay = args.weight_decay)
@@ -73,6 +73,6 @@ if __name__ == "__main":
         os.makedirs(str_cd+'/results')
     
     
-    run()
+    run(args,config)
 
                                 
