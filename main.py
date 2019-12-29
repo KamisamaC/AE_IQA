@@ -17,7 +17,7 @@ from ignite.engine import Events, create_supervised_trainer, create_supervised_e
 from ignite.metrics.metric import Metric
 
 class IQAPerformance(Metric):
-    
+
     def  __init__(self):
         self.y_pred = []
         self.y = []
@@ -44,7 +44,7 @@ str_cd = 'exp/BiNet/' + datetime.now().strftime("%Y%m%d_%H%M%S")
 if os.path.exists(str_cd) == False:
     os.makedirs(str_cd)
 
-def get_data_loader (args,config):
+def get_data_loader (args,config,model_file):
     dataset = args.dataset
     Dataset = Dataset.dataset
     train_dataset = Dataset(config,'train')
@@ -60,6 +60,9 @@ def create_summary_writer(model, data_loader, log_dir = 'tensorboard_logs'):
     writer = SummaryWriter(log_dir=log_dir)
     return writer
 
+def loss_fn(y_pred, y):
+    return F.l1_loss(y_pred[0], y[0])
+
 def run(args,config,log_dir):
     model = model.args.model(eature_channels=config['feature_channels'], n1_nodes=config['n1_nodes'], n2_nodes=config['n2_nodes'])
     device = torch.device("cuda" if args.use_gpu and torch.cuda.is_available() else "cpu")
@@ -70,8 +73,8 @@ def run(args,config,log_dir):
 
     optimizer = optim.Adam(model.parameters(),lr = args.lr, weight_decay = args.weight_decay)
 
-        global best_criterion   
-    best_criterion = -1  # SROCC>=-1
+    global best_criterion   
+    best_criterion = -1 
     trainer = create_supervised_trainer(model, optimizer, loss_fn, device=device)
     evaluator = create_supervised_evaluator(model,
                                             metrics={'IQA_performance': IQAPerformance()},
@@ -102,54 +105,19 @@ def run(args,config,log_dir):
         evaluator.run(val_loader)
         metrics = evaluator.state.metrics
         SROCC, KROCC, PLCC, RMSE, MAE, OR = metrics['IQA_performance']
-        print("Validation Results - Epoch: {}  SROCC: {:.4f} KROCC: {:.4f} PLCC: {:.4f} RMSE: {:.4f} MAE: {:.4f} OR: {:.2f}%"
-              .format(engine.state.epoch, SROCC, KROCC, PLCC, RMSE, MAE, 100 * OR))
+        print("Validation Results - Epoch: {}  SROCC: {:.4f} KROCC: {:.4f} PLCC: {:.4f} RMSE: {:.4f} "
+              .format(engine.state.epoch, SROCC, KROCC, PLCC, RMSE))
         writer.add_scalar("validation/SROCC", SROCC, engine.state.epoch)
         writer.add_scalar("validation/KROCC", KROCC, engine.state.epoch)
         writer.add_scalar("validation/PLCC", PLCC, engine.state.epoch)
         writer.add_scalar("validation/RMSE", RMSE, engine.state.epoch)
-        writer.add_scalar("validation/MAE", MAE, engine.state.epoch)
-        writer.add_scalar("validation/OR", OR, engine.state.epoch)
         global best_criterion
         global best_epoch
         if SROCC > best_criterion:
             best_criterion = SROCC
             best_epoch = engine.state.epoch
-            torch.save(model.state_dict(), trained_model_file)
-###############################################################
+            torch.save(model.state_dict(), model_file)
 
-
-    @trainer.on(Events.EPOCH_COMPLETED)
-    def log_testing_results(engine):
-        if config["test_ratio"] > 0 and config['test_during_training']:
-            evaluator.run(test_loader)
-            metrics = evaluator.state.metrics
-            SROCC, KROCC, PLCC, RMSE, MAE, OR = metrics['IQA_performance']
-            #Acc = metrics['IDC_performance']
-            print("Testing Results    - Epoch: {} SROCC: {:.4f} KROCC: {:.4f} PLCC: {:.4f} RMSE: {:.4f} MAE: {:.4f} OR: {:.2f}%"
-                  .format(engine.state.epoch, SROCC, KROCC, PLCC, RMSE, MAE, 100 * OR))
-            writer.add_scalar("testing/SROCC", SROCC, engine.state.epoch)
-            writer.add_scalar("testing/KROCC", KROCC, engine.state.epoch)
-            writer.add_scalar("testing/PLCC", PLCC, engine.state.epoch)
-            writer.add_scalar("testing/RMSE", RMSE, engine.state.epoch)
-            writer.add_scalar("testing/MAE", MAE, engine.state.epoch)
-            writer.add_scalar("testing/OR", OR, engine.state.epoch)
-            #3writer.add_scalar("testing/Acc", Acc, engine.state.epoch)
-
-    @trainer.on(Events.COMPLETED)
-    def final_testing_results(engine):
-        if config["test_ratio"] > 0:
-            model.load_state_dict(torch.load(trained_model_file))
-            evaluator.run(test_loader)
-            metrics = evaluator.state.metrics
-            SROCC, KROCC, PLCC, RMSE, MAE, OR = metrics['IQA_performance']
-            #Acc = metrics['IDC_performance']
-            global best_epoch
-            print("Final Test Results - Epoch: {} SROCC: {:.4f} KROCC: {:.4f} PLCC: {:.4f} RMSE: {:.4f} MAE: {:.4f} OR: {:.2f}%"
-                .format(best_epoch,  SROCC, KROCC, PLCC, RMSE, MAE, 100 * OR))
-            np.save(save_result_file, ( SROCC, KROCC, PLCC, RMSE, MAE, OR))
-
-    # kick everything off
     trainer.run(train_loader, max_epochs=epochs)
 
     writer.close()
@@ -182,10 +150,11 @@ if __name__ == "__main":
     config.update(config[args.dataset])
     config.update(config[args.model])
 
+    model_file = str_cd+'/results'
     if not os.path.exists(str_cd+'/results'):
         os.makedirs(str_cd+'/results')
     
     
-    run(args = args,config = config )
+    run(args = args,config = config ,model_file)
 
                                 
