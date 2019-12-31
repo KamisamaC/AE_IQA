@@ -42,7 +42,7 @@ class LIVE(Dataset):
 
         trainindex = index[:int(train_ratio * len(index))]
         valindex = index[int((1-train_ratio) * len(index)):]
-        testindex = index[len(index):]
+        testindex = index[:len(index)]
         train_index,val_index,test_index = [],[],[]
         for i in range(len(ref_ids)):
              if (ref_ids[i] in trainindex):
@@ -62,15 +62,16 @@ class LIVE(Dataset):
         if status == 'test':
             self.index = test_index
 
-        self.mos = Info['subjective_scores'][0, self.index] #
-        self.mos_std = Info['subjective_scoresSTD'][0, self.index] #
+        self.mos = Info['subjective_scores'][0, self.index] 
+        self.mos_std = Info['subjective_scoresSTD'][0, self.index] 
         im_names = [Info[Info['im_names'][0, :][i]].value.tobytes()\
                         [::2].decode() for i in self.index]
 
         self.patches = ()
         self.label = []
         self.label_std = []
-        for idx in range(len(self.index)):
+        from tqdm import tqdm
+        for idx in tqdm(range(len(self.index))):
             im = PIL.Image.open(os.path.join(im_dir, im_names[idx]))
             patches = OverlappingCropPatches(im, self.patch_size, self.stride)
             if status == 'train':
