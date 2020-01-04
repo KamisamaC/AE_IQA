@@ -77,4 +77,4 @@ class ResnetIQA(nn.Module):
         h = torch.cat((h1, h2), 1)  #
         h = h.squeeze(3).squeeze(2)
         out = self.classifier(h)
-        return out,
+        return out

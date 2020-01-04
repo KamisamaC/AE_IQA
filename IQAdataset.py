@@ -96,8 +96,8 @@ class LIVE(Dataset):
         if (self.idx[idx]>0):
             count = self.idx.count(self.idx[idx-count])
         idxx = idx
-        idxx -= count
-        patches = OverlappingCropPatches(im, self.patch_size, self.stride)[1]
+        idxx -= count ## need some trick and skills
+        patches = OverlappingCropPatches(im, self.patch_size, self.stride)[0]
         return patches , label_std
         
 

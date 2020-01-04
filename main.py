@@ -24,14 +24,14 @@ class IQAPerformance(Metric):
 
     def update(self,output):
         pred , y = output
-
         self.y.append(y[0])
-        self.y_pred.append(torch.mean(pred[0]))
+        self.y_pred.append([torch.mean(pred[0])])
     
     def compute(self):
         y = np.reshape(np.asarray(self.y),(-1,))
-        pred = np.reshape(np.asarray(self.y_pred)(-1,))
-
+        pred = np.reshape(np.asarray(self.y_pred),(-1,))
+        y = np.array([x.cpu() for x in y])
+        pred = np.array([x.cpu() for x in pred])
         srocc = stats.spearmanr(y,pred)[0]
         krocc = stats.stats.kendalltau(y,pred)[0]
         plcc = stats.pearsonr(y,pred)[0]
@@ -111,10 +111,10 @@ def run(args,config,model_file):
         global best_criterion
         global best_epoch
         if SROCC > best_criterion:
-            best_criterion = SROCC
+            best_criterion = float(SROCC)
             best_epoch = engine.state.epoch
             torch.save(model.state_dict(), model_file)
-            with open(str_cd+'/config.yaml', "w")  as f:
+            with open(str_cd+'/Result.yaml', "w")  as f:
                 yaml_obj = {}
                 yaml_obj['Best_SROCC'] = best_criterion
                 yaml.dump(yaml_obj,f,default_flow_style=False)
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description = "Attention-Expaned CNNIQA")
     parser.add_argument('--batch_size',type = int , default=32,help = 'input batchsize for training(default:32)')
     parser.add_argument('--epochs',type=int,default=100,help = 'number of ephoes to train (default:100)')
-    parser.add_argument('--lr',type=float,default=10e-4,help='learning rate(default:10e-4)')
+    parser.add_argument('--lr',type=float,default=1e-4,help='learning rate(default:10e-4)')
     parser.add_argument('--weight_decay',type=float,default=10e-4,help='Weight_decay(default:10e-4)')
     parser.add_argument('--config',type=str,default='config.yaml',help='config file path(default:config.yaml)')
     parser.add_argument('--dataset',type=str,default='LIVE',help='dataset to train/test(default:LIVE2016)')
@@ -151,9 +151,9 @@ if __name__ == "__main__":
     config.update(config[args.dataset])
     config.update(config[args.model])
 
-    model_file = str_cd+'/results'
     if not os.path.exists(str_cd+'/results'):
         os.makedirs(str_cd+'/results')
+        model_file = str_cd+'/results/result'
     
     run(args = args,config = config ,model_file = model_file)
                                 
