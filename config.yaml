@@ -1,0 +1,63 @@
+enableTensorboard: True #
+test_during_training: True #
+
+### database ###
+LIVE:
+  datainfo: /media/cel505a/Elements/LIVEfullinfo.mat
+  im_dir: /media/cel505a/Elements/databaserelease2
+
+Waterloo:
+  raw_score_dir: ../data/raw_scores
+  score_dir: ../data/scores
+  score_file: MS-SSIM.mat
+  image_name: ../data/image_name.npy
+  image_index: ../data/randomlist.npy
+  im_dir: ../data/distortion_images
+  mask_dir: ../data/inference_output_pristine_bw_crop
+
+TID2013:
+  raw_score_dir: ../data/scores_FT/
+  score_dir: ../data/scores_FT/
+  score_file: TID2013_MOS_FT.npy
+  image_name: ../data/distorted_images/img_distortion.npy
+  image_index: ../data/distorted_images/img_distortion.npy
+  im_dir: ../data/distorted_images/
+  mask_dir: ../data/inference_output_pristine_bw_crop
+
+Clive:
+  raw_score_dir: ../data/Clive/ChallengeDB_release/ChallengeDB_release/Data/
+  score_dir: ../data/Clive/ChallengeDB_release/ChallengeDB_release/Data/
+  score_file: MOS.npy
+  image_name: ../data/Clive/ChallengeDB_release/ChallengeDB_release/Data/img_name.npy
+  image_index: ../data/Clive/ChallengeDB_release/ChallengeDB_release/Data/img_name.npy
+  im_dir: ../data/Clive/ChallengeDB_release/ChallengeDB_release/Images/
+  mask_dir: ../data/inference_output_pristine_bw_crop
+
+KonIq:
+  image_name: ../data/Koniq10k_name.npy
+  im_dir: ../data/koniq10k/1024x768
+  mos_file: ../data/Koniq10k.npy ##Pure KonIq
+
+CSIQ:
+  raw_score_dir: ../data/CSIQ/
+  score_dir: ../data/CSIQ/
+  score_file: CSIQ.npy
+  image_name: ../data/CSIQ/img_name.npy
+  image_index: ../data/CSIQ/img_name.npy
+  im_dir: ../data/CSIQ/dst_imgs
+
+
+patch_size: 224
+stride: 224
+
+train_ratio: 0.6
+
+BiNet:
+  feature_channels: 512
+  n1_nodes: 1024
+  n2_nodes: 512
+
+ResnetIQA:
+  feature_channels: 512
+  n1_nodes: 256
+  n2_nodes: 100

@@ -49,3 +49,32 @@ class BiNet(nn.Module):
         x = torch.cat((x,x_1),dim = 1)         
         out = self.classify(x)
         return out, 
+
+class ResnetIQA(nn.Module):
+    def __init__(self,weight_file = None,feature_channels = 512,n1_nodes=512,n2_nodes=512):
+        super(ResnetIQA,self).__init__()
+        resnet = resnet34(pretrained=False)
+        if not(weight_file == None):
+            resnet.load_state_dict(torch.load(weight_file),strict=False)
+        self.features = nn.Sequential(resnet.conv1,resnet.bn1,resnet.relu,
+        resnet.maxpool,resnet.layer1,resnet.layer2,
+        resnet.layer3,resnet.layer4)
+        self.classifier = nn.Sequential(
+            nn.Linear(2*feature_channels,n1_nodes),
+            nn.ReLU(True),
+            nn.BatchNorm1d(n1_nodes),
+            nn.Linear(n1_nodes,n2_nodes),
+            nn.ReLU(True),
+            nn.Linear(n2_nodes,1)
+        )
+
+    
+    def forward(self,x):
+        x = x.view(-1, x.size(-3), x.size(-2), x.size(-1))
+        h = self.features(x)
+        h1 = F.max_pool2d(h, (h.size(-2), h.size(-1)))
+        h2 = -F.max_pool2d(-h, (h.size(-2), h.size(-1)))
+        h = torch.cat((h1, h2), 1)  #
+        h = h.squeeze(3).squeeze(2)
+        out = self.classifier(h)
+        return out,

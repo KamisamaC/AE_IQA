@@ -1,6 +1,6 @@
 import torch.nn as nn
 #from torch.utils import load_state_dict_from_url
-from cbam.cbam import *
+from AttentionModule import *
 import torch.nn.functional as F
 
 

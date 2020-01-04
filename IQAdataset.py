@@ -24,13 +24,13 @@ def OverlappingCropPatches(im, patch_size=224, stride=224):
     for i in range(0, h - stride, stride):
         for j in range(0, w - stride, stride):
             patch = to_tensor(im.crop((j, i, j + patch_size, i + patch_size)))
-            patch = LocalNormalization(patch[0].numpy())
+            #patch = LocalNormalization(patch.numpy())
             patches = patches + (patch,)
     return patches
 
 class LIVE(Dataset):
     def __init__(self,conf,status = 'train'):
-        im_dir = conf['im_dir']
+        self.im_dir = conf['im_dir']
         self.patch_size = conf['patch_size']
         self.stride = conf['stride']
         datainfo = conf['datainfo']
@@ -62,34 +62,43 @@ class LIVE(Dataset):
         if status == 'test':
             self.index = test_index
 
-        self.mos = Info['subjective_scores'][0, self.index] 
         self.mos_std = Info['subjective_scoresSTD'][0, self.index] 
-        im_names = [Info[Info['im_names'][0, :][i]].value.tobytes()\
+        self.im_names = [Info[Info['im_names'][0, :][i]].value.tobytes()\
                         [::2].decode() for i in self.index]
 
-        self.patches = ()
+        patchess = ()
         self.label = []
         self.label_std = []
+        self.idx = []
         from tqdm import tqdm
         for idx in tqdm(range(len(self.index))):
-            im = PIL.Image.open(os.path.join(im_dir, im_names[idx]))
+            im = PIL.Image.open(os.path.join(self.im_dir, self.im_names[idx]))
             patches = OverlappingCropPatches(im, self.patch_size, self.stride)
             if status == 'train':
-                self.patches = self.patches + patches #
+                patchess = patchess + patches #
                 for i in range(len(patches)):
-                    self.label.append(1-self.mos[idx])
                     self.label_std.append(1-self.mos_std[idx])
+                    self.idx.append(idx)
             else:
-                self.patches = self.patches + (torch.stack(patches),)  #
-                self.label.append(1-self.mos[idx])
+                patchess = patchess + (torch.stack(patches),)  #
                 self.label_std.append(1-self.mos_std[idx])
+                self.idx.append(idx)
+            self.length = len(patchess)
 
     def __len__(self):
-        return len(self.patches)
+        return self.length
 
     def __getitem__(self, idx):
-        return (self.patches[idx], (torch.Tensor([self.label[idx],]),
-                torch.Tensor([self.label_std[idx],])))
+        label_std = torch.Tensor([self.label_std[idx]])
+        im = PIL.Image.open(os.path.join(self.im_dir, self.im_names[self.idx[idx]]))
+        global count
+        count = 0
+        if (self.idx[idx]>0):
+            count = self.idx.count(self.idx[idx-count])
+        idxx = idx
+        idxx -= count
+        patches = OverlappingCropPatches(im, self.patch_size, self.stride)[1]
+        return patches , label_std
         
 
 

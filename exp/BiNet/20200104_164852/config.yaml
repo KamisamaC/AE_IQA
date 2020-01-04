@@ -1,0 +1,5 @@
+batch_size: 32
+dataset: LIVE
+epochs: 100
+lr: 0.001
+model: ResnetIQA

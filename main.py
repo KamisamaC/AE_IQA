@@ -74,8 +74,6 @@ def run(args,config,model_file):
 
     global best_criterion   
     best_criterion = -1
-    import pdb
-    pdb.set_trace()
     trainer = create_supervised_trainer(model, optimizer, loss_fn, device=device)
     evaluator = create_supervised_evaluator(model,metrics={'IQA_performance': IQAPerformance()},device=device)
 
@@ -97,7 +95,7 @@ def run(args,config,model_file):
             print('lr: ', str(p['lr']))
         if engine.state.epoch % 25== 0:
             for p in optimizer.param_groups:
-                p['lr'] *= 0.8
+                p['lr'] *= 0.9
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
@@ -116,6 +114,11 @@ def run(args,config,model_file):
             best_criterion = SROCC
             best_epoch = engine.state.epoch
             torch.save(model.state_dict(), model_file)
+            with open(str_cd+'/config.yaml', "w")  as f:
+                yaml_obj = {}
+                yaml_obj['Best_SROCC'] = best_criterion
+                yaml.dump(yaml_obj,f,default_flow_style=False)
+
     trainer.run(train_loader, max_epochs=args.epochs)
     writer.close()
 
